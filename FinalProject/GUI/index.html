@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Student Academic Advisor</title>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+
+:root {
+  --bg:#f5f5f3;
+  --surface:#fff;
+  --surface2:#f0efeb;
+  --border:#e0deda;
+  --border2:#c8c6c0;
+  --text:#1a1a18;
+  --text2:#5f5e5a;
+  --text3:#8a8880;
+
+  --bar-dropout:#E24B4A;
+  --bar-enrolled:#BA7517;
+  --bar-graduate:#639922;
+
+  --radius:8px;
+  --radius-lg:12px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  padding: 2rem 1rem;
+}
+
+.container { max-width: 760px; margin: auto; }
+
+.header h1 { font-size:24px; }
+.header p { color:var(--text2); }
+
+.card {
+  background: var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:1.5rem;
+  margin-top:1rem;
+}
+
+.form-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+
+.field { display:flex; flex-direction:column; gap:6px; }
+
+label { font-size:13px; color:var(--text2); font-weight:600; }
+
+input, select {
+  padding:10px;
+  border-radius:var(--radius);
+  border:1px solid var(--border2);
+}
+
+.hint {
+  font-size:12px;
+  color:var(--text3);
+  line-height:1.5;
+}
+
+.actions { margin-top:1rem; display:flex; gap:10px; }
+
+button {
+  padding:10px 18px;
+  border:none;
+  border-radius:var(--radius);
+}
+
+.primary { background:black; color:white; }
+.secondary { border:1px solid var(--border); background:white; }
+
+.results { display:none; }
+.results.show { display:block; }
+
+.metric-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:12px;
+}
+
+.metric {
+  background:var(--surface2);
+  padding:1rem;
+  border-radius:var(--radius);
+}
+
+.metric-label {
+  font-size:11px;
+  color:var(--text3);
+  text-transform:uppercase;
+}
+
+.metric-value {
+  font-size:20px;
+  font-weight:600;
+}
+
+.prob-row {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-top:10px;
+}
+
+.prob-name { width:70px; font-size:13px; color:var(--text2); }
+
+.prob-track {
+  flex:1;
+  height:8px;
+  background:var(--surface2);
+  border-radius:4px;
+}
+
+.prob-fill { height:100%; }
+
+.dropout { background:var(--bar-dropout); }
+.enrolled { background:var(--bar-enrolled); }
+.graduate { background:var(--bar-graduate); }
+
+.pct { width:40px; text-align:right; font-size:13px; }
+
+.reason {
+  display:flex;
+  gap:8px;
+  font-size:13px;
+  margin-bottom:6px;
+  color:var(--text2);
+}
+
+.dot {
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--border2);
+  margin-top:6px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+  <h1>🎓 Student Academic Advisor</h1>
+  <p>Predict student outcome and risk level</p>
+</div>
+
+<div class="card">
+
+  <div class="form-grid">
+
+    <div class="field">
+      <label>Previous GPA</label>
+      <input type="number" id="previous_gpa" min="0" max="4" step="0.01">
+      <span class="hint">
+        Student’s previous semester GPA (0–4 scale).
+        Higher = better academic performance.
+      </span>
+    </div>
+
+    <div class="field">
+      <label>Background GPA</label>
+      <input type="number" id="background_gpa" min="0" max="4" step="0.01">
+      <span class="hint">
+        Overall academic background before current semester.
+      </span>
+    </div>
+
+    <div class="field">
+      <label>Enrolled units</label>
+      <input type="number" id="enrolled_units_count">
+      <span class="hint">
+        Number of courses currently registered.
+      </span>
+    </div>
+
+    <div class="field">
+      <label>Approved units</label>
+      <input type="number" id="approved_units_count">
+      <span class="hint">
+        Number of courses successfully passed.
+      </span>
+    </div>
+
+    <div class="field">
+      <label>Past failures</label>
+      <input type="number" id="past_failures_count">
+      <span class="hint">
+        Number of previously failed courses.
+      </span>
+    </div>
+
+    <div class="field">
+      <label>Parent education</label>
+      <input type="number" id="parent_education_level">
+      <span class="hint">
+        Estimated parental education level (0–100).
+      </span>
+    </div>
+
+    <div class="field">
+      <label>Difficulty</label>
+      <select id="difficulty_level">
+        <option>Low</option><option>Medium</option><option>High</option>
+      </select>
+      <span class="hint">
+        Difficulty level of enrolled courses.
+      </span>
+    </div>
+
+    <div class="field">
+      <label>Study time</label>
+      <select id="study_time_level">
+        <option>Low</option><option>Medium</option><option>High</option>
+      </select>
+      <span class="hint">
+        Amount of time spent studying.
+      </span>
+    </div>
+
+    <div class="field">
+      <label>Absence rate</label>
+      <select id="absence_rate">
+        <option>Rare</option><option>Sometimes</option><option>Often</option>
+      </select>
+      <span class="hint">
+        Frequency of missing classes.
+      </span>
+    </div>
+
+    <div class="field">
+      <label>Age group</label>
+      <select id="age_group">
+        <option>18-20</option><option>21-23</option><option>24+</option>
+      </select>
+      <span class="hint">
+        Student age category.
+      </span>
+    </div>
+
+  </div>
+
+  <div class="actions">
+    <button class="primary" onclick="run()">Analyze</button>
+    <button class="secondary" onclick="location.reload()">Clear</button>
+  </div>
+
+</div>
+
+<div class="results card" id="results">
+
+  <div class="metric-grid">
+    <div class="metric">
+      <div class="metric-label">Status</div>
+      <div class="metric-value" id="status"></div>
+    </div>
+
+    <div class="metric">
+      <div class="metric-label">Risk</div>
+      <div class="metric-value" id="risk"></div>
+    </div>
+
+    <div class="metric">
+      <div class="metric-label">Confidence</div>
+      <div class="metric-value" id="conf"></div>
+    </div>
+  </div>
+
+  <h3 style="margin-top:15px;">Probabilities</h3>
+
+  <div class="prob-row">
+    <div class="prob-name">Dropout</div>
+    <div class="prob-track"><div class="prob-fill dropout" id="d"></div></div>
+    <div class="pct" id="dp"></div>
+  </div>
+
+  <div class="prob-row">
+    <div class="prob-name">Enrolled</div>
+    <div class="prob-track"><div class="prob-fill enrolled" id="e"></div></div>
+    <div class="pct" id="ep"></div>
+  </div>
+
+  <div class="prob-row">
+    <div class="prob-name">Graduate</div>
+    <div class="prob-track"><div class="prob-fill graduate" id="g"></div></div>
+    <div class="pct" id="gp"></div>
+  </div>
+
+  <div style="margin-top:15px;">
+    <div class="metric-label">Explanation</div>
+    <div id="explanation"></div>
+  </div>
+
+  <div style="margin-top:15px;">
+    <div class="metric-label">Recommendation</div>
+    <div id="recommendation"></div>
+  </div>
+
+</div>
+
+</div>
+
+<script>
+
+const API = "http://127.0.0.1:5000/predict";
+
+async function run() {
+
+  const prev = (document.getElementById("previous_gpa").value / 4) * 200;
+  const back = (document.getElementById("background_gpa").value / 4) * 200;
+
+  const data = {
+    previous_grade_score: prev,
+    background_academic_score: back,
+    enrolled_units_count: +document.getElementById("enrolled_units_count").value,
+    approved_units_count: +document.getElementById("approved_units_count").value,
+    past_failures_count: +document.getElementById("past_failures_count").value,
+    parent_education_level: +document.getElementById("parent_education_level").value,
+    difficulty_level: document.getElementById("difficulty_level").value,
+    study_time_level: document.getElementById("study_time_level").value,
+    absence_rate: document.getElementById("absence_rate").value,
+    age_group: document.getElementById("age_group").value
+  };
+
+  const res = await fetch(API, {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(data)
+  });
+
+  const r = await res.json();
+
+  document.getElementById("results").style.display = "block";
+
+  document.getElementById("status").innerText = r.student_status;
+  document.getElementById("risk").innerText = r.risk_level;
+
+  const probs = r.probabilities;
+  const top = Math.max(...Object.values(probs));
+  document.getElementById("conf").innerText = Math.round(top*100) + "%";
+
+  document.getElementById("d").style.width = (probs.Dropout*100)+"%";
+  document.getElementById("e").style.width = (probs.Enrolled*100)+"%";
+  document.getElementById("g").style.width = (probs.Graduate*100)+"%";
+
+  document.getElementById("dp").innerText = Math.round(probs.Dropout*100)+"%";
+  document.getElementById("ep").innerText = Math.round(probs.Enrolled*100)+"%";
+  document.getElementById("gp").innerText = Math.round(probs.Graduate*100)+"%";
+
+  document.getElementById("explanation").innerHTML =
+    (r.explanation || []).map(x =>
+      `<div class="reason"><div class="dot"></div><div>${x}</div></div>`
+    ).join("");
+
+  document.getElementById("recommendation").innerText =
+    r.recommendation || "";
+
+}
+
+</script>
+
+</body>
+</html>
