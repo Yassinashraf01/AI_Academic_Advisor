@@ -84,10 +84,7 @@ def prepare_input(student_dict):
 
 
 def predict_student_status(student_dict, model, scaler):
-    """
-    Takes raw numeric input features, scales them, predicts student_status,
-    and returns class probabilities too.
-    """
+   
     input_df = prepare_input(student_dict)
     scaled_input = scaler.transform(input_df)
 
@@ -164,14 +161,14 @@ def run_academic_advisor(student_dict):
 
 if __name__ == "__main__":
     sample_student = {
-        "previous_grade_score": 88,
-        "background_academic_score": 85,
+        "previous_grade_score": 70,
+        "background_academic_score": 80,
         "enrolled_units_count": 4,
-        "difficulty_level": 1,      # Low
-        "past_failures_count": 0,
+        "difficulty_level": 0,      # high
+        "past_failures_count": 2,
         "approved_units_count": 7,
-        "study_time_level": 0,      # High
-        "absence_rate": 1,          # Rare
+        "study_time_level": 2,      # medium
+        "absence_rate": 2,          # sometimes
         "age_group": 0,             # 18-20
         "parent_education_level": 70
     }
