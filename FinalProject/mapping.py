@@ -7,11 +7,9 @@ BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "mlp_model.pkl"
 SCALER_PATH = BASE_DIR / "scaler.pkl"
 
-
 DATA_DIR = BASE_DIR / "data"
 OUTPUT_DIR = BASE_DIR / "output"
 TRAINING_DATA_PATH = OUTPUT_DIR / "training_data.csv"
-
 
 
 STATUS_LABELS = {
@@ -39,22 +37,21 @@ FEATURE_COLUMNS = [
     "parent_education_level"
 ]
 
-
 ENCODING_GUIDE = {
     "difficulty_level": {
-        "High": 0,
-        "Low": 1,
-        "Medium": 2
+        "Low": 0,
+        "Medium": 1,
+        "High": 2
     },
     "study_time_level": {
-        "High": 0,
-        "Low": 1,
-        "Medium": 2
+        "Low": 0,
+        "Medium": 1,
+        "High": 2
     },
     "absence_rate": {
-        "Often": 0,
-        "Rare": 1,
-        "Sometimes": 2
+        "Rare": 0,
+        "Sometimes": 1,
+        "Often": 2
     },
     "age_group": {
         "18-20": 0,
@@ -64,12 +61,10 @@ ENCODING_GUIDE = {
 }
 
 
-
 def load_artifacts(model_path=MODEL_PATH, scaler_path=SCALER_PATH):
     model = joblib.load(model_path)
     scaler = joblib.load(scaler_path)
     return model, scaler
-
 
 
 def prepare_input(student_dict):
@@ -79,15 +74,20 @@ def prepare_input(student_dict):
     if missing:
         raise ValueError(f"Missing required features: {missing}")
 
+    # Convert categorical text inputs into the same numeric encoding used during preprocessing
+    for col, mapping in ENCODING_GUIDE.items():
+        if col in df.columns:
+            df[col] = df[col].map(mapping)
+
+            if df[col].isnull().any():
+                raise ValueError(
+                    f"Invalid value for '{col}'. Allowed values are: {list(mapping.keys())}"
+                )
+
     return df[FEATURE_COLUMNS]
 
 
-
 def predict_student_status(student_dict, model, scaler):
-    """
-    Takes raw numeric input features, scales them, predicts student_status,
-    and returns class probabilities too.
-    """
     input_df = prepare_input(student_dict)
     scaled_input = scaler.transform(input_df)
 
@@ -105,6 +105,10 @@ def map_risk_level(student_status):
 def generate_explanation(student_dict):
     reasons = []
 
+    difficulty = student_dict["difficulty_level"]
+    study_time = student_dict["study_time_level"]
+    absence = student_dict["absence_rate"]
+
     if student_dict["previous_grade_score"] < 80:
         reasons.append("Previous academic performance is below the expected level")
 
@@ -117,13 +121,13 @@ def generate_explanation(student_dict):
     if student_dict["past_failures_count"] >= 2:
         reasons.append("Past failures indicate repeated academic difficulty")
 
-    if student_dict["difficulty_level"] == 0 or student_dict["enrolled_units_count"] >= 6:
+    if difficulty == "High" or student_dict["enrolled_units_count"] >= 6:
         reasons.append("Heavy academic workload may be affecting performance")
 
-    if student_dict["study_time_level"] == 1:
+    if study_time == "Low":
         reasons.append("Low study time may reduce learning progress")
 
-    if student_dict["absence_rate"] == 0:
+    if absence == "Often":
         reasons.append("Frequent absences may negatively affect academic results")
 
     if not reasons:
@@ -162,17 +166,18 @@ def run_academic_advisor(student_dict):
         "recommendation": recommendation
     }
 
+
 if __name__ == "__main__":
     sample_student = {
         "previous_grade_score": 88,
         "background_academic_score": 85,
         "enrolled_units_count": 4,
-        "difficulty_level": 1,      # Low
+        "difficulty_level": "Low",
         "past_failures_count": 0,
         "approved_units_count": 7,
-        "study_time_level": 0,      # High
-        "absence_rate": 1,          # Rare
-        "age_group": 0,             # 18-20
+        "study_time_level": "High",
+        "absence_rate": "Rare",
+        "age_group": "18-20",
         "parent_education_level": 70
     }
 
