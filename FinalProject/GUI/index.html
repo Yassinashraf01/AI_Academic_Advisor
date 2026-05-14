@@ -24,6 +24,11 @@
 
   --radius:8px;
   --radius-lg:12px;
+
+  --error:#c0392b;
+  --error-bg:#fdf0ef;
+  --error-border:#e8b4b2;
+  --input-error-border:#c0392b;
 }
 
 body {
@@ -59,6 +64,12 @@ input, select {
   padding:10px;
   border-radius:var(--radius);
   border:1px solid var(--border2);
+  transition: border-color 0.15s;
+}
+
+input.invalid, select.invalid {
+  border-color: var(--input-error-border) !important;
+  background: var(--error-bg);
 }
 
 .hint {
@@ -67,12 +78,24 @@ input, select {
   line-height:1.5;
 }
 
+.error-msg {
+  font-size:12px;
+  color: var(--error);
+  line-height:1.4;
+  display: none;
+}
+
+.error-msg.show {
+  display: block;
+}
+
 .actions { margin-top:1rem; display:flex; gap:10px; }
 
 button {
   padding:10px 18px;
   border:none;
   border-radius:var(--radius);
+  cursor: pointer;
 }
 
 .primary { background:black; color:white; }
@@ -161,25 +184,28 @@ button {
   <div class="form-grid">
 
     <div class="field">
-      <label>Previous GPA</label>
+      <label>Term GPA</label>
       <input type="number" id="previous_gpa" min="0" max="4" step="0.01">
+      <span class="error-msg" id="err_previous_gpa">Must be between 0.00 and 4.00</span>
       <span class="hint">
-        Student’s previous semester GPA (0–4 scale).
+        Student's previous semester GPA (0–4 scale).
         Higher = better academic performance.
       </span>
     </div>
 
     <div class="field">
-      <label>Background GPA</label>
+      <label>Accumulative GPA</label>
       <input type="number" id="background_gpa" min="0" max="4" step="0.01">
+      <span class="error-msg" id="err_background_gpa">Must be between 0.00 and 4.00</span>
       <span class="hint">
-        Overall academic background before current semester.
+        Overall academic background.
       </span>
     </div>
 
     <div class="field">
       <label>Enrolled units</label>
       <input type="number" id="enrolled_units_count">
+      <span class="error-msg" id="err_enrolled_units_count">Must be a positive number (≥ 1)</span>
       <span class="hint">
         Number of courses currently registered.
       </span>
@@ -188,6 +214,7 @@ button {
     <div class="field">
       <label>Approved units</label>
       <input type="number" id="approved_units_count">
+      <span class="error-msg" id="err_approved_units_count">Must be ≥ 0 and not exceed enrolled units</span>
       <span class="hint">
         Number of courses successfully passed.
       </span>
@@ -196,6 +223,7 @@ button {
     <div class="field">
       <label>Past failures</label>
       <input type="number" id="past_failures_count">
+      <span class="error-msg" id="err_past_failures_count">Must be 0 or a positive whole number</span>
       <span class="hint">
         Number of previously failed courses.
       </span>
@@ -203,9 +231,19 @@ button {
 
     <div class="field">
       <label>Parent education</label>
-      <input type="number" id="parent_education_level">
+      <select id="parent_education_level">
+        <option value="" disabled selected>Select level</option>
+        <option value="0">No education</option>
+        <option value="17">Primary school (up to 4th grade)</option>
+        <option value="33">Basic education (5th–9th grade)</option>
+        <option value="50">Secondary / High school</option>
+        <option value="67">Bachelor's degree</option>
+        <option value="83">Master's degree</option>
+        <option value="100">PhD / Doctorate</option>
+      </select>
+      <span class="error-msg" id="err_parent_education_level">Please select a parent education level</span>
       <span class="hint">
-        Estimated parental education level (0–100).
+        Highest education level of student's parent(s).
       </span>
     </div>
 
@@ -315,7 +353,97 @@ button {
 
 const API = "http://127.0.0.1:5000/predict";
 
+/* ── Validation helpers ── */
+
+function setError(id, show) {
+  const input = document.getElementById(id);
+  const msg   = document.getElementById("err_" + id);
+  if (!msg) return;
+  if (show) {
+    input.classList.add("invalid");
+    msg.classList.add("show");
+  } else {
+    input.classList.remove("invalid");
+    msg.classList.remove("show");
+  }
+}
+
+function validateAll() {
+  let valid = true;
+
+  /* Term GPA: 0 – 4, required */
+  const prevGpa = parseFloat(document.getElementById("previous_gpa").value);
+  if (isNaN(prevGpa) || prevGpa < 0 || prevGpa > 4) {
+    setError("previous_gpa", true); valid = false;
+  } else {
+    setError("previous_gpa", false);
+  }
+
+  /* Accumulative GPA: 0 – 4, required */
+  const bgGpa = parseFloat(document.getElementById("background_gpa").value);
+  if (isNaN(bgGpa) || bgGpa < 0 || bgGpa > 4) {
+    setError("background_gpa", true); valid = false;
+  } else {
+    setError("background_gpa", false);
+  }
+
+  /* Enrolled units: integer ≥ 1 */
+  const enrolled = parseInt(document.getElementById("enrolled_units_count").value, 10);
+  if (isNaN(enrolled) || enrolled < 1) {
+    setError("enrolled_units_count", true); valid = false;
+  } else {
+    setError("enrolled_units_count", false);
+  }
+
+  /* Approved units: integer ≥ 0, must not exceed enrolled */
+  const approved = parseInt(document.getElementById("approved_units_count").value, 10);
+  const enrolledVal = parseInt(document.getElementById("enrolled_units_count").value, 10);
+  if (isNaN(approved) || approved < 0 || (!isNaN(enrolledVal) && approved > enrolledVal)) {
+    setError("approved_units_count", true); valid = false;
+  } else {
+    setError("approved_units_count", false);
+  }
+
+  /* Past failures: integer ≥ 0 */
+  const failures = parseInt(document.getElementById("past_failures_count").value, 10);
+  if (isNaN(failures) || failures < 0 || !Number.isInteger(failures)) {
+    setError("past_failures_count", true); valid = false;
+  } else {
+    setError("past_failures_count", false);
+  }
+
+  /* Parent education: must select an option */
+  const parentEdu = document.getElementById("parent_education_level").value;
+  if (parentEdu === "") {
+    setError("parent_education_level", true); valid = false;
+  } else {
+    setError("parent_education_level", false);
+  }
+
+  return valid;
+}
+
+/* Live validation on blur for numeric inputs */
+["previous_gpa", "background_gpa", "enrolled_units_count",
+ "approved_units_count", "past_failures_count"
+].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener("blur", () => validateAll());
+  el.addEventListener("input", () => {
+    setError(id, false);
+  });
+});
+
+/* Live validation for parent education dropdown */
+document.getElementById("parent_education_level").addEventListener("change", () => {
+  setError("parent_education_level", false);
+});
+
+/* ── Main run function ── */
+
 async function run() {
+
+  if (!validateAll()) return;
 
   const prev = (document.getElementById("previous_gpa").value / 4) * 200;
   const back = (document.getElementById("background_gpa").value / 4) * 200;
